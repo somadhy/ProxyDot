@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -65,6 +66,8 @@ public sealed class Worker : BackgroundService
         // Exclude with headers from client request.
         var stopList = new HashSet<string>() { "host", "content-length", "content-type" };
 
+        uint requestCounter = 0;
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -72,17 +75,19 @@ public sealed class Worker : BackgroundService
                 HttpListenerContext context = await listener.GetContextAsync().WaitAsync(stoppingToken); ;
                 HttpListenerRequest clientRequest = context.Request;
 
-                _logger.LogInformation("Received request for {localUrl}", clientRequest.Url);
+                requestCounter++;
+
+                _logger.LogDebug("Received request #{requestCounter} for {localUrl}", requestCounter, clientRequest.Url);
 
                 if (clientRequest?.RawUrl is null)
                 {
-                    _logger.LogWarning("Request is null");
+                    _logger.LogWarning("Request #{requestCounter} is null", requestCounter);
                     continue;
                 }
 
                 var remoteUrl = $"{upstreamUri}{clientRequest.RawUrl}";
 
-                _logger.LogInformation("Proxy to {remoteUrl}", remoteUrl);
+                _logger.LogInformation("Send request #{requestCounter} to {remoteUrl}", requestCounter, remoteUrl);
 
                 var remoteRequest = new HttpRequestMessage()
                 {
@@ -114,11 +119,17 @@ public sealed class Worker : BackgroundService
                     CopyRequestHeaders(clientRequest, remoteRequest, stopList);
                 }
 
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
+                stopwatch.Stop();
+                _logger.LogDebug(
+                    "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken ms: {ElapsedMilliseconds}",
+                    requestCounter, remoteResponse.StatusCode,
+                    remoteResponse.Content.Headers.ContentLength, stopwatch.ElapsedMilliseconds);
 
                 if (remoteResponse is null)
                 {
-                    _logger.LogWarning("Response is empty");
+                    _logger.LogWarning("A response to the request #{requestCounter} is empty", requestCounter);
                     continue;
                 }
 
@@ -143,7 +154,7 @@ public sealed class Worker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "We have a problem :(");
+                _logger.LogError(ex, "We have a problem :( Last request #{requestCounter}", requestCounter);
             }
 
         }
