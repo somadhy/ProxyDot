@@ -1,5 +1,7 @@
 using ProxyDot;
 using Serilog;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 
 Console.WriteLine("ProxyDot engine starting...");
 
@@ -10,6 +12,16 @@ var config = new ConfigurationBuilder()
 var logger = new LoggerConfiguration()
     .ReadFrom.Configuration(config)
     .CreateLogger();
+
+try
+{
+    RequireAdministrator();
+}
+catch (Exception ex)
+{
+    logger.Error(ex.Message);
+    return;
+}
 
 logger.Information("ProxyDot log began!");
 
@@ -55,4 +67,28 @@ static string ReadPassword()
     }
     Console.WriteLine();
     return password;
+}
+
+[DllImport("libc")]
+static extern uint getuid();
+
+/// <summary>
+/// Asks for administrator privileges upgrade if the platform supports it, otherwise does nothing
+/// </summary>
+static void RequireAdministrator()
+{
+    string name = AppDomain.CurrentDomain.FriendlyName;
+    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+    {
+        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        if (!principal.IsInRole(WindowsBuiltInRole.Administrator))
+        {
+            throw new InvalidOperationException($"Application must be run as administrator. Right click the \"{name}\" file and select 'run as administrator' or run \"{name}\" in elevated terminal.");
+        }
+    }
+    else if (getuid() != 0)
+    {
+        throw new InvalidOperationException($"Application must be run as root/sudo. From terminal, run the executable as 'sudo {name}'");
+    }
 }
