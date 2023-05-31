@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
@@ -64,7 +65,20 @@ public sealed class Worker : BackgroundService
         HttpClient httpClient = GetHttpClient(credentials);
 
         // Exclude with headers from client request.
-        var stopList = new HashSet<string>() { "host", "content-length", "content-type" };
+        // var stopList = new HashSet<string>() { "host", "content-length", "content-type", "origin" };
+
+        // Exclude with headers from client request.
+        var stopList = _configuration?.GetSection("ProxyDot:IgnoredRequestHeaders")?
+            .AsEnumerable()
+            .Where(s => s.Value is not null)
+            .Select(s => s.Value?.ToLowerInvariant())
+            .ToHashSet();
+
+        if (stopList is not null)
+        {
+            stopList.Add("content-length");
+            stopList.Add("content-type");
+        }
 
         uint requestCounter = 0;
 
@@ -87,13 +101,13 @@ public sealed class Worker : BackgroundService
 
                 var remoteUrl = $"{upstreamUri}{clientRequest.RawUrl}";
 
-                _logger.LogInformation("Send request #{requestCounter} to {remoteUrl}", requestCounter, remoteUrl);
-
                 var remoteRequest = new HttpRequestMessage()
                 {
                     RequestUri = new Uri(remoteUrl),
                     Method = new HttpMethod(clientRequest.HttpMethod.ToUpper()),
                 };
+
+                _logger.LogInformation("Send request #{requestCounter} to {remoteUrl} method {method}", requestCounter, remoteUrl, remoteRequest.Method);
 
                 // If request have body, forward it to upstream.
                 if (clientRequest.HasEntityBody)
@@ -117,6 +131,11 @@ public sealed class Worker : BackgroundService
                 if (clientRequest.Headers?.Count > 0)
                 {
                     CopyRequestHeaders(clientRequest, remoteRequest, stopList);
+
+                    _logger.LogTrace("Remote request #{requestCounter} headers: {headers}",
+                        requestCounter,
+                        remoteRequest.Headers.Select(header => 
+                            $"{header.Key}:[{string.Join(";", header.Value)}]"));
                 }
 
                 Stopwatch stopwatch = Stopwatch.StartNew();
@@ -138,6 +157,10 @@ public sealed class Worker : BackgroundService
 
                 // Forward headers to client.
                 CopyResponseHeaders(remoteResponse, response);
+                _logger.LogTrace("Response to request #{requestCounter} headers: {headers}",
+                        requestCounter,
+                        remoteResponse.Headers.Select(header =>
+                            $"{header.Key}:[{string.Join(";", header.Value)}]"));
 
                 response.StatusCode = (int)remoteResponse.StatusCode;
 
@@ -216,11 +239,11 @@ public sealed class Worker : BackgroundService
         }
     }
 
-    private static void CopyRequestHeaders(HttpListenerRequest clientRequest, HttpRequestMessage remoteRequest, HashSet<string> stopList)
+    private static void CopyRequestHeaders(HttpListenerRequest clientRequest, HttpRequestMessage remoteRequest, HashSet<string?>? stopList)
     {
         foreach (string clientHeaderKey in clientRequest.Headers.Keys)
         {
-            if (!stopList.Contains(clientHeaderKey.ToLowerInvariant()))
+            if (stopList is null || !stopList.Contains(clientHeaderKey.ToLowerInvariant()))
             {
                 remoteRequest.Headers.Add(clientHeaderKey, clientRequest.Headers[clientHeaderKey]);
             }
