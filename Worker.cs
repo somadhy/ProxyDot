@@ -107,6 +107,7 @@ public sealed class Worker : BackgroundService
                     Method = new HttpMethod(clientRequest.HttpMethod.ToUpper()),
                 };
 
+
                 _logger.LogInformation("Send request #{requestCounter} to {remoteUrl} method {method}", requestCounter, remoteUrl, remoteRequest.Method);
 
                 // If request have body, forward it to upstream.
@@ -124,7 +125,8 @@ public sealed class Worker : BackgroundService
                         }
                     }
 
-                    remoteRequest.Content.Headers.ContentLength = contentString.Length;
+                    remoteRequest.Content.Headers.ContentLength = (await remoteRequest.Content.ReadAsByteArrayAsync(stoppingToken)).LongLength;
+
                 }
 
                 // Forward headers to upstream.
@@ -139,8 +141,11 @@ public sealed class Worker : BackgroundService
                 }
 
                 Stopwatch stopwatch = Stopwatch.StartNew();
+
                 var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
+
                 stopwatch.Stop();
+
                 _logger.LogDebug(
                     "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken ms: {ElapsedMilliseconds}",
                     requestCounter, remoteResponse.StatusCode,
