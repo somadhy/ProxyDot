@@ -34,6 +34,7 @@ Values configure in `appsettings.json`
     "AuthenticationMethod": "Negotiate",            # Negotiate, NTLM, Basic
     "UserName": "User",                             # Remote user name
     "Domain": "Contoso"                             # Remote domain
+    "IgnoredRequestHeaders": [ "Host", "Origin" ]   # This headers do not copy from client to remote
   },
 ```
 
