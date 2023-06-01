@@ -1,4 +1,4 @@
-﻿# ProxyDot
+# ProxyDot
 
 Local worker, designed to proxy requests on a local port, to a pre-specified remote server. 
 
@@ -10,7 +10,7 @@ Only Windows.
 
 ## Features
 - Kerberos authentication is supported for the target site
-- Write request logs to file (with Serilog)
+- Write request logs to file (with [Serilog](https://serilog.net))
 
 ## Build
 
