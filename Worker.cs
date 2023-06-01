@@ -65,9 +65,6 @@ public sealed class Worker : BackgroundService
         HttpClient httpClient = GetHttpClient(credentials);
 
         // Exclude with headers from client request.
-        // var stopList = new HashSet<string>() { "host", "content-length", "content-type", "origin" };
-
-        // Exclude with headers from client request.
         var stopList = _configuration?.GetSection("ProxyDot:IgnoredRequestHeaders")?
             .AsEnumerable()
             .Where(s => s.Value is not null)
@@ -81,7 +78,6 @@ public sealed class Worker : BackgroundService
         }
 
         uint requestCounter = 0;
-
         while (!stoppingToken.IsCancellationRequested)
         {
             try
