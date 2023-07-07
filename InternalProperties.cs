@@ -1,6 +1,8 @@
-﻿namespace ProxyDot;
+﻿using System.Security;
+
+namespace ProxyDot;
 
 public class InternalProperties
 {
-    public string? RemoteSystemPassword { get; set; }
+    public SecureString? RemoteSystemPassword { get; set; }
 }

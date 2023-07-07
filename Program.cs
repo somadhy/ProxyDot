@@ -1,6 +1,7 @@
 using ProxyDot;
 using Serilog;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Security.Principal;
 
 Console.WriteLine("ProxyDot engine starting...");
@@ -54,16 +55,16 @@ builder.Logging.ClearProviders()
 var host = builder.Build();
 host.Run();
 
-static string ReadPassword()
+static SecureString ReadPassword()
 {
     Console.Write("Provide password: ");
-    var password = string.Empty;
+    var password = new SecureString();
     while (true)
     {
         var key = Console.ReadKey(true);
         if (key.Key == ConsoleKey.Enter)
             break;
-        password += key.KeyChar;
+        password.AppendChar(key.KeyChar);
     }
     Console.WriteLine();
     return password;

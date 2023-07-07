@@ -35,7 +35,7 @@ public sealed class Worker : BackgroundService
             _logger.LogError("Windows XP SP2 or Server 2003+ is required to use the HttpListener class.");
             return;
         }
-        
+
         // Get local port from config.
         if(!uint.TryParse(_configuration["ProxyDot:LocalPort"], out uint localPort))
         {
@@ -132,7 +132,7 @@ public sealed class Worker : BackgroundService
 
                     _logger.LogTrace("Remote request #{requestCounter} headers: {headers}",
                         requestCounter,
-                        remoteRequest.Headers.Select(header => 
+                        remoteRequest.Headers.Select(header =>
                             $"{header.Key}:[{string.Join(";", header.Value)}]"));
                 }
 
@@ -209,9 +209,10 @@ public sealed class Worker : BackgroundService
         }
 
         _logger.LogDebug("Use new {authenticationMethod} credentials for domain '{domain}' user '{username}'", authenticationMethod, domain, username);
-        CredentialCache credentialsCache = new() 
-        { 
-            {new Uri(upstreamURI), authenticationMethod, new NetworkCredential(username, _internalProperties.RemoteSystemPassword, domain)} 
+
+        CredentialCache credentialsCache = new()
+        {
+            {new Uri(upstreamURI), authenticationMethod, new NetworkCredential(username, _internalProperties.RemoteSystemPassword, domain)}
         };
 
         return credentialsCache;
