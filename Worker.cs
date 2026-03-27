@@ -75,6 +75,18 @@ public sealed class Worker : BackgroundService
         {
             stopList.Add("content-length");
             stopList.Add("content-type");
+
+            // Hop-by-hop headers must not be forwarded by proxies.
+            stopList.Add("connection");
+            stopList.Add("proxy-connection");
+            stopList.Add("keep-alive");
+            stopList.Add("transfer-encoding");
+            stopList.Add("te");
+            stopList.Add("trailer");
+            stopList.Add("upgrade");
+            stopList.Add("proxy-authenticate");
+            stopList.Add("proxy-authorization");
+            stopList.Add("expect");
         }
 
         uint requestCounter = 0;
@@ -97,7 +109,7 @@ public sealed class Worker : BackgroundService
 
                 var remoteUrl = $"{upstreamUri}{clientRequest.RawUrl}";
 
-                var remoteRequest = new HttpRequestMessage()
+                using var remoteRequest = new HttpRequestMessage()
                 {
                     RequestUri = new Uri(remoteUrl),
                     Method = new HttpMethod(clientRequest.HttpMethod.ToUpper()),
@@ -136,22 +148,16 @@ public sealed class Worker : BackgroundService
                             $"{header.Key}:[{string.Join(";", header.Value)}]"));
                 }
 
-                Stopwatch stopwatch = Stopwatch.StartNew();
+                var startSpan = Stopwatch.GetTimestamp();
 
-                var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
+                using var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
 
-                stopwatch.Stop();
+                var elapsed = Stopwatch.GetElapsedTime(startSpan);
 
                 _logger.LogDebug(
-                    "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken ms: {ElapsedMilliseconds}",
+                    "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken: {ElapsedMilliseconds}",
                     requestCounter, remoteResponse.StatusCode,
-                    remoteResponse.Content.Headers.ContentLength, stopwatch.ElapsedMilliseconds);
-
-                if (remoteResponse is null)
-                {
-                    _logger.LogWarning("A response to the request #{requestCounter} is empty", requestCounter);
-                    continue;
-                }
+                    remoteResponse.Content.Headers.ContentLength, elapsed);
 
                 using HttpListenerResponse response = context.Response;
                 response.ContentEncoding = Encoding.UTF8;

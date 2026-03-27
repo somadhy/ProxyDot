@@ -9,6 +9,7 @@ For testing purposes used .Net Core 8 preview and AOT Publish.
 Only Windows.
 
 ## Features
+
 - Kerberos authentication is supported for the target site
 - Write request logs to file (with [Serilog](https://serilog.net))
 
@@ -16,7 +17,7 @@ Only Windows.
 
 Go to root project directory and:
 
-- build with `dotnet build`
+- build with `dotnet build -c Release`
 - or AOT publish with `dotnet publish`
 - or just build & run in place `dotnet run`
 
