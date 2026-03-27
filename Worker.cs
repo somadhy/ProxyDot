@@ -75,6 +75,18 @@ public sealed class Worker : BackgroundService
         {
             stopList.Add("content-length");
             stopList.Add("content-type");
+
+            // Hop-by-hop headers must not be forwarded by proxies.
+            stopList.Add("connection");
+            stopList.Add("proxy-connection");
+            stopList.Add("keep-alive");
+            stopList.Add("transfer-encoding");
+            stopList.Add("te");
+            stopList.Add("trailer");
+            stopList.Add("upgrade");
+            stopList.Add("proxy-authenticate");
+            stopList.Add("proxy-authorization");
+            stopList.Add("expect");
         }
 
         uint requestCounter = 0;
