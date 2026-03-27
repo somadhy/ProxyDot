@@ -97,7 +97,7 @@ public sealed class Worker : BackgroundService
 
                 var remoteUrl = $"{upstreamUri}{clientRequest.RawUrl}";
 
-                var remoteRequest = new HttpRequestMessage()
+                using var remoteRequest = new HttpRequestMessage()
                 {
                     RequestUri = new Uri(remoteUrl),
                     Method = new HttpMethod(clientRequest.HttpMethod.ToUpper()),
@@ -138,7 +138,7 @@ public sealed class Worker : BackgroundService
 
                 var startSpan = Stopwatch.GetTimestamp();
 
-                var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
+                using var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
 
                 var elapsed = Stopwatch.GetElapsedTime(startSpan);
 
@@ -146,12 +146,6 @@ public sealed class Worker : BackgroundService
                     "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken: {ElapsedMilliseconds}",
                     requestCounter, remoteResponse.StatusCode,
                     remoteResponse.Content.Headers.ContentLength, elapsed);
-
-                if (remoteResponse is null)
-                {
-                    _logger.LogWarning("A response to the request #{requestCounter} is empty", requestCounter);
-                    continue;
-                }
 
                 using HttpListenerResponse response = context.Response;
                 response.ContentEncoding = Encoding.UTF8;
