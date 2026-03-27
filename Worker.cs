@@ -136,16 +136,16 @@ public sealed class Worker : BackgroundService
                             $"{header.Key}:[{string.Join(";", header.Value)}]"));
                 }
 
-                Stopwatch stopwatch = Stopwatch.StartNew();
+                var startSpan = Stopwatch.GetTimestamp();
 
                 var remoteResponse = await httpClient.SendAsync(remoteRequest, stoppingToken);
 
-                stopwatch.Stop();
+                var elapsed = Stopwatch.GetElapsedTime(startSpan);
 
                 _logger.LogDebug(
-                    "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken ms: {ElapsedMilliseconds}",
+                    "A response to the request #{requestCounter} was received. Status is {status}. Content-Length: {ContentLength}. Time taken: {ElapsedMilliseconds}",
                     requestCounter, remoteResponse.StatusCode,
-                    remoteResponse.Content.Headers.ContentLength, stopwatch.ElapsedMilliseconds);
+                    remoteResponse.Content.Headers.ContentLength, elapsed);
 
                 if (remoteResponse is null)
                 {
